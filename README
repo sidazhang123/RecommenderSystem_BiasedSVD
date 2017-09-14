@@ -1,0 +1,83 @@
+This experiment uses python 3.4 and stores outputs in MySQL 5.5. 
+
+1. Imported Modules
+import math                          (basic arithmetical functions)
+import random                        (generate random numbers to fill decomposed matrices P and Q)
+import pickle                        (output trained model)
+import matplotlib.pyplot as plt      (produce line graph)
+import mysql.connector               (connect to mysql)
+import subprocess                    (open external editor in the UI part)
+
+2. Output files
+svd_model.dat (default name. Binary file of the saved trained model.)
+prediction_u1.txt
+...
+prediction_u5.txt     (predicted ratings in the same order with the u_.test files)
+mysqldb.sql           (import to build associated db without predicted data because of submission size limit. uname:pw ~ admin:admin)
+
+3. Configuration
+svd.conf              (parameter settings of the learning algorithm)
+EXAMPLE:"""
+0.9 3000 3000 20 0.05 0.1 20
+LearningRateDecay userNum itemNum LatentFactorNum LearningRate regularization maxIter
+"""
+LearningRateDecay: learning rate = learning rate * LearningRateDecay in each iteration (this affects converging speed and accuracy)
+userNum & itemNum: any number greater than the actual to declare the user-item matrix  (MUST)
+LatentFactorNum: number of latent factors to generate, the equal row/col numbers of P Q(this affects performance)
+LearningRate                                                                           (this affects converging speed and accuracy)
+regularization: L2 penalty coefficient used to avoid overfitting                       (this could cause over-/underfitting)
+maxIter:        gradient descent iteration will stop when exceeds this number          (this affects converging speed and accuracy)
+
+4. svd.py (main framework)
+functions:
+	- SVD()                       training and saving model
+	|	- Average()           get the global average of the passing-in user-item matrix
+	|	- InnerProduct()      get the production of two vectors
+	|       - PredictScore()      make prediction. used to give training/testing error
+	|       - Validate()          calculate RMSE between the prediction and the ground truth 
+	
+	- Predict()                   read in trained model and predict based on user ids
+
+	- getRecommendation()         give (top-k) recommendations in the form of movie titles
+
+	- ui()                        wire the above functions, asking for choices at every main step  
+
+5. Interactions
+WhileLoop{
+	"skip conf?"    -  whether to change parameter settings in svd.conf.
+				- Y, use the current.
+				- N, open the .conf with nano CLI editor
+
+	"Path to training data ?   - specify the location of training dataset
+
+	"Path to testing data ?    - specify the location of training dataset
+
+	"Path to save MODEL ?"     - location to save trained model
+					- Enter, save under the same directory as "svd_model.dat"
+					- user input to specify
+
+	"Skip Training ?"	- whether to directly use a trained model
+					- Y, skip
+					- Enter, start training
+					
+					  "Show Error of every loop?" - observe the gradual decline of training error
+					  "Show graph of Errors?"     - a statistical line graph of training error in each iteration
+
+	"Skip Predicting ?"     - whether to directly use predicted ratings to do recommendation
+					- Y, skip
+					- Enter, start predicting
+	
+	"Skip Recommending ?"   - whether to make recommendations
+					- Y, return to the beginning of this loop
+					- Enter, start recommending
+					  "For which User? (id) "   - whether to specify a user id
+					  	- input a number, all the following results will be given regarding to this user
+						- Enter, incoming results will be based on all predicted ratings
+					  "How many rows to view?"  - results given in descent order of ratings
+						- input a number, return results in this number of lines
+						- Enter, display all
+					  "sql?" - if you want to perform a sql query yourself, here to enter a sql statement
+
+}
+
+5. external_err_cal.py  - a small program compares prediction_u.txt and ml-100k/u.test to derive RMSE and MAE, using numpy.
